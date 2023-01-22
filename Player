@@ -1,0 +1,68 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Player : MonoBehaviour
+{
+    private Rigidbody2D rb; // la hitbox du Player (21.01.2023)
+    public float speed; // variable pour le déplacement (21.01.2023)
+    public float JumpForce; // variable (21.01.2023)
+    private float moveInput; // variable (21.01.2023)
+
+    private bool isGrounded; // boucle permettant de savoir si le joueur est au sol (21.01.2023)
+    public Transform CheckPos; // position de la zone pour voir si il est grounded (21.01.2023)
+    public float RadiusCheck; // zone pour savoir si le joueur est au sol (21.01.2023)
+    public LayerMask wahtIsGround; // Detecter quel object sont considérer comme du sol (21.01.2023)
+
+    private float JumpTimeCounter; // temps pendant le quel il peut continuer de sauter (21.01.2023)
+    public float JumpTime; // temps maximal pendant le quel il peut continuer de sauter (21.01.2023)
+    private bool isJumping; // boucle pour savoir si il saute (21.01.2023) 
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>(); // va identifier le script rigidbody pour l'utiliser  (21.01.2023)
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        moveInput = Input.GetAxisRaw("Horizontal"); // initialiser le moveInput, il est égal au fait que lorsque on appuie sur une flèche à droite ou à gauche l'on pose une valeur entre -1 et 1 (21.01.2023)
+        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y); // crée un vecteur en 2d sur le rigidbody qui multiplie le moveInput par la variable speed  sur l'axe x et garde la vitesse de base sur l'axe y (21.01.2023)
+        Jump(); // fonction (21.01.2023)
+    }
+
+    private void Jump() // fonction pour sauter  (21.01.2023)
+    {
+        isGrounded = Physics2D.OverlapCircle(CheckPos.position, RadiusCheck, wahtIsGround); // définition de la zone pour détécter le sol (21.01.2023)
+        if(isGrounded == true && Input.GetKeyDown(KeyCode.Space)) // si le player detect le sol et appuie sur espace (21.01.2023) 
+        {
+            isJumping = true; 
+            JumpTimeCounter = JumpTime; 
+            rb.velocity = Vector2.up * JumpForce; // vecteur en 2d pour faire sauter le Player (21.01.2023)
+        }
+
+        if(Input.GetKey(KeyCode.Space) && isJumping == true) // si la touche espace est maintenue enfoncé (21.01.2023) 
+        {
+            if (JumpTimeCounter > 0) // si le tempse de saut et au dessu de 0 (21.01.2023) 
+            {
+                rb.velocity = new Vector2(rb.velocity.x, JumpForce); // vecteur en 2d pour faire sauter le Player (21.01.2023)
+                JumpTimeCounter -= Time.deltaTime; // enlève une valeur toute les frames à la variable JumpTimeCounter (21.01.2023) 
+            }
+            else // sinon (21.01.2023) 
+            {
+                isJumping = false; 
+            }
+        }
+
+        if(Input.GetKeyUp(KeyCode.Space)) // si la touche espace est relevé (21.01.2023) 
+        {
+            isJumping = false; 
+        }
+    }
+
+
+
+
+}
