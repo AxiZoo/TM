@@ -1,0 +1,50 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Patrol : MonoBehaviour
+{
+    public List<Transform> points; // liste de point (6.02.2023)
+    public int nextID = 0; // variable pour savoir qu'elle point il a franchit (6.02.2023)
+    int idChangeValue = 1; //  variable pour changer la valeur de la variable nextID (6.02.2023)
+    public float speed = 2; // vitesse de l'object (6.02.2023)
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        MoveNextPoint(); // fonction permettant de faire patrouiller un object notament un ennemie (6.02.2023)
+    }
+
+    private void MoveNextPoint() 
+    {
+        Transform goalPoint = points[nextID]; // donnant la valeur au deux point selon la variable nextID (6.02.2023)
+        if (goalPoint.transform.position.x>transform.position.x) // si la postion de l'autre point est plus grande que celle de l'object (6.02.2023)
+        {
+            transform.localScale = new Vector3(-1, 1, 1);  // inverse l'image pour faire aller l'object vers la gauche ou la droite (6.02.2023)
+        }
+        else
+        {
+            transform.localScale = new Vector3(1, 1, 1); // inverse l'image pour faire aller l'object vers la gauche ou la droite (6.02.2023)
+        }
+        transform.position = Vector2.MoveTowards(transform.position, goalPoint.position, speed*Time.deltaTime); // permet à l'object de se déplace vers le point demandé (6.02.2023)
+        if (Vector2.Distance(transform.position, goalPoint.position)<1f) // lorsque l'object s'approche du point de déstination alors (6.02.2023)
+        {
+            if(nextID == points.Count - 1) // verifie si la variable nextID est égal à un total de point moins 1 (6.02.2023)
+            {
+                idChangeValue = -1; // change la valeur de la variable pour dire qu'il a atteint le point et qu'il va devoir aller à l'autre (6.02.2023)
+            }
+            if(nextID == 0) // verifie si la variable nextID est égal à 0 (6.02.2023)
+            {
+                idChangeValue = 1; // change la valeur de la variable pour dire qu'il a atteint le point et qu'il va devoir aller à l'autre (6.02.2023)
+            }
+            nextID += idChangeValue; // la variable nextID est additionner à la variable idChangeValue (6.02.2023) 
+        }
+    }
+}
