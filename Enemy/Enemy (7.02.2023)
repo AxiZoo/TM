@@ -1,0 +1,47 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+    public GameObject player; // Référence de l'object en l'occurence le joueur (27.01.2023) 
+
+    public int health; // variable pour les point de vie de l'ennemie (27.01.2023)
+    public GameObject bloodEffect; // object pour ajouter des effets notament des particles (7.02.2023)
+    public GameObject HitEffect; // object pour ajouter des effets notament des particles (7.02.2023)
+
+    public delegate void OnEnemyTakenDamage(); // va permettre d'observer quand la fonction se déclanche dans d'autre script (7.02.2023)
+    public event OnEnemyTakenDamage enemyTakenDamage; // définition de l'evenement (7.02.2023)
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        Death();   // fonction pour faire disparaitre l'ennemie quand ses pv arrive à 0 (27.01.2023)
+    }
+
+    public void TakeDamage(int damage) // fonction pour faire déscendre les pv de l'ennemie à l'aide de la fonction attack du joueur (27.01.2023)
+    {
+        health -= damage; // soustrait les pv à l'attaque du joueur (27.01.2023)
+        if (enemyTakenDamage != null) // verifie si l'evenement est utilisé (7.02.2023)
+        {
+            enemyTakenDamage(); // utulisation de la fonction (7.02.2023)
+        }
+        Instantiate(HitEffect, transform.position, Quaternion.identity); // crée l'object dis à la position de l'objet (7.02.2023)
+    }
+
+    private void Death()
+    {
+        if(health <= 0) // si les pv sont en dessou de 0 (27.01.2023)
+        {
+            Destroy(gameObject); // détruit l'objet (27.01.2023)
+            Instantiate(bloodEffect, transform.position, Quaternion.identity); // crée un effet de particle (27.01.2023)
+        }
+    }
+
+}
