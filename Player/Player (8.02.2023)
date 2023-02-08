@@ -1,0 +1,295 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class Player : MonoBehaviour
+{
+    private Rigidbody2D rb; // la hitbox du Player (21.01.2023)
+    public float speed; // variable pour le déplacement (21.01.2023)
+    public float JumpForce; // variable (21.01.2023)
+    private float moveInput; // variable (21.01.2023)
+
+    private bool isGrounded; // boucle permettant de savoir si le joueur est au sol (21.01.2023)
+    public Transform CheckPos; // position de la zone pour voir si il est grounded (21.01.2023)
+    public float RadiusCheck; // zone pour savoir si le joueur est au sol (21.01.2023)
+    public LayerMask wahtIsGround; // Detecter quel object sont considérer comme du sol (21.01.2023)
+
+    private float JumpTimeCounter; // temps pendant le quel il peut continuer de sauter (21.01.2023)
+    public float JumpTime; // temps maximal pendant le quel il peut continuer de sauter (21.01.2023)
+    private bool isJumping; // boucle pour savoir si il saute (21.01.2023) 
+
+    private Animator anim;  // initialasation du componenent animator (23.01.2023)
+
+    private float timeAttack; //le temps restant pour attaquer (25.01.2023)
+    public float startTimeAttack; // le temps total pour attaquer (25.01.2023)
+
+    public Transform attackPos; // position du cercle qui va infliger des dégats au enemies (25.01.2023)
+    public LayerMask whatIsEnemies; //  Detecter l'objet que la zone doit détécter (25.01.2023)
+    public float attackRange; // rayon du cercle qui permet de tuer les enemies (25.01.2023)
+    public float attackHight;
+    public int damage; // les demage infliger (25.01.2023)
+
+    public LayerMask WahtisWall; // Detecter l'objet que la zone doit détécter (30.01.2023)
+    public Transform wallCheck; // position de la zone (30.01.2023)
+    bool isWallTouch; // variable pour la zone qui detect le mur (30.01.2023)
+    bool isSliding; // variable pour savoir si le joueur est colé à un mur (30.01.2023)
+    public float wallSlidingSpeed; // variable pour la vitesse à la quelle le joueur glisse du mur (30.01.2023)
+    public float wallJumpDuration; // temps pendant lequel le wallJump dure (30.01.2023)
+    public Vector2 wallJumpForce; // vecteur de force pour le wallJump (30.01.2023)
+    bool wallJumping; // variable pour savoir si le joueur peut faire le wallJump (30.01.2023)
+    public float WallRadiusCheck; // radius de la zone qui détect les murs (30.01.2023)
+    private float CantSwitchDirection; // variable pour que le joueur ne puisse pas changer de diréction lors du wallJump (30.01.2023)
+
+    public float KBForce; // force de la projection (6.02.2023)
+    public float KBduration; // durée de la projection (6.02.2023)
+    private bool isKB = false; // boucle pour savoir is le joueur est en pleine projection (6.02.2023)
+    private Vector2 knockbackDirection; // Vecteur 2d de la direction de la projection
+
+    public int Health; // point de vie (6.02.2023)
+    public int numberOfHearts; // nombre d'image de point de vie (6.02.2023)
+
+    public Image[] hearts; // list de coeur à afficher (6.02.2023)
+    public Sprite fullHeart; // Image du coeur plein (6.02.2023)
+    public Sprite emptyHeart; // image du coeur vide (6.02.2023)
+
+    Vector2 startPosition; // variable pour connaitre la position d'origine du joueur (8.02.2023)
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>(); // va identifier le script rigidbody pour l'utiliser  (21.01.2023)
+        anim = GetComponent<Animator>(); // va identifier le script animator pour l'utiliser (23.01.2023)
+
+        startPosition = transform.position; // définie la position d'origine du joueur à la variable startPosition (8.02.2023) 
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+        Move(); // fonction pour bouger (22.01.2023)
+        Jump(); // fonction pour sauter (21.01.2023)
+        Attack(); // fonction pour attaquer (25.01.2023)
+        WallJump(); // fonction pour sauter de mur en mur (30.01.2023)
+        KB(); // fonction pour la projection lors du contacte avec un enemie (6.02.2023)
+        HeartUI(); // fonction pour afficher les points de vie maximume et manquant (6.02.2023)
+        print(rb.velocity);
+    }
+
+    private void Move()
+    {
+        moveInput = Input.GetAxisRaw("Horizontal"); // initialiser le moveInput, il est égal au fait que lorsque on appuie sur une flèche à droite ou à gauche l'on pose une valeur entre -1 et 1 (21.01.2023)
+        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y); // crée un vecteur en 2d sur le rigidbody qui multiplie le moveInput par la variable speed  sur l'axe x et garde la vitesse de base sur l'axe y (21.01.2023)
+
+        if (moveInput < 0f) // si il le Player se délplace vers la gauche (22.01.2023)
+        {
+            Vector3 localScale = transform.localScale; //(22.01.2023)
+            localScale.x = -1f; //(22.01.2023)
+            transform.localScale = localScale; //(22.01.2023) 
+        }
+
+        if (moveInput > 0f) // si il le Player se délplace vers la droite (22.01.2023)
+        {
+            Vector3 localScale = transform.localScale; //(22.01.2023)
+            localScale.x = 1f; //(22.01.2023)
+            transform.localScale = localScale; //(22.01.2023)
+        }
+
+        if (moveInput == 0) // si l'on se déplace (23.01.2023)
+        {
+            anim.SetBool("IsRunning", false); // lance une boucle d'animation de position imobile (23.01.2023)
+        }
+        else //sinon (23.01.2023)
+        {
+            anim.SetBool("IsRunning", true); // lance une boucle d'animation de cours (23.01.2023)
+        }
+    }
+
+    private void Jump() // fonction pour sauter  (21.01.2023)
+    {
+        isGrounded = Physics2D.OverlapCapsule(CheckPos.position, new Vector2(0.58f, 0.2f), CapsuleDirection2D.Horizontal, 0, wahtIsGround); // définition de la zone pour détécter le sol (21.01.2023)
+        if(isGrounded == true && Input.GetKeyDown(KeyCode.Space)) // si le player detect le sol et appuie sur espace (21.01.2023) 
+        {
+            isJumping = true; 
+            JumpTimeCounter = JumpTime; // reset le chronomètre à notre variable
+            rb.velocity = Vector2.up * JumpForce; // vecteur en 2d pour faire sauter le Player (21.01.2023)
+            anim.SetTrigger("StartJump"); // animation pour faire sauter le Player (24.01.2023) 
+        }
+
+        if(Input.GetKey(KeyCode.Space) && isJumping == true) // si la touche espace est maintenue enfoncé (21.01.2023) 
+        {
+            if (JumpTimeCounter > 0) // si le tempse de saut et au dessu de 0 (21.01.2023) 
+            {
+                rb.velocity = new Vector2(rb.velocity.x, JumpForce); // vecteur en 2d pour faire sauter le Player (21.01.2023)
+                JumpTimeCounter -= Time.deltaTime; // enlève une valeur toute les frames à la variable JumpTimeCounter (21.01.2023) 
+            }
+            else 
+            {
+                isJumping = false; 
+            }
+        }
+
+        if(Input.GetKeyUp(KeyCode.Space)) // si la touche espace est relevé (21.01.2023) 
+        {
+            isJumping = false; 
+        }
+
+        if(isGrounded == true) // si il trouche le sol  (24.01.2023) 
+        {
+            anim.SetBool("EndJump", true); // active la boucle qui arrete l'animation de saut (24.01.2023) 
+        }
+        else
+        {
+            anim.SetBool("EndJump", false); // continue de lancer l'animation de saut car il n'est pas au sol (24.01.2023) 
+        }
+    }
+
+    private void Attack() // fonction pour attaquer les enemie  (25.01.2023)
+    {
+        if(timeAttack <= 0) // si le temps pour attaquer est passé (25.01.2023)
+        {
+            if (Input.GetKey("y")) // lorsque on appuie sur y (25.01.2023)
+            {
+                Collider2D[] enemiesToDamage = Physics2D.OverlapCapsuleAll(attackPos.position, new Vector2(attackRange, attackHight), CapsuleDirection2D.Horizontal, 0, whatIsEnemies); // va detecter les collision avec la Layer choisi donc Enemie (25.01.2023)
+                for (int i = 0; i < enemiesToDamage.Length; i++) // une boucle qui nous permet d'infliger des dégats au enemie (25.01.2023)
+                {
+                    enemiesToDamage[i].GetComponent<Enemy>().TakeDamage(damage); // identifier le script Enemy pour enclencher sa fonction TakeDamage (25.01.2023)
+                }
+                
+                if(moveInput == 0)
+                {
+                    anim.SetTrigger("Attack"); // animation d'attaque imobile (31.01.2023)
+                }
+
+                if( moveInput != 0 && isGrounded)
+                {
+                    anim.SetTrigger("AttackRun"); // animation d'attaque pendant un déplacement (31.01.2023)
+                }
+
+                if (!isGrounded)
+                {
+                    anim.SetTrigger("AttackJump"); // animation d'attaque en l'air (31.01.2023)
+                }
+                timeAttack = startTimeAttack; // reinstaller le temps réstant au temps définie de base (25.01.2023)
+            }
+
+        }
+        else
+        {
+            timeAttack -= Time.deltaTime; // si le temps n'est toujour pas passer on réduit la variable jusqu'à qu'elle sois en dessous de 0 (25.01.2023)
+        }
+    }
+
+    private void WallJump() // fonction pour pouvoir faire un saut de mur (30.01.2023)
+    {
+        isWallTouch = Physics2D.OverlapCircle(wallCheck.position, WallRadiusCheck, WahtisWall); // defenir que la variable isWallTouch est une zone en cercle qui devient true lorsqu'elle est en contact avec la layer définie (30.01.2023)
+
+        if (isWallTouch && !isGrounded && moveInput != 0) // si la variable isWallTouch, grounded ne l'est pas, moveInput sont true alors: (30.01.2023)
+        {
+            isSliding = true;
+            rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue)); // la vitesse pour déscendre lorsqu'il glisse d'un mur (30.01.2023)
+            anim.SetBool("IsSliding", true); 
+        }
+        else // si il n'y a pas de contact alors la variable devient false permetant de savoir qu'il ne glisse pas d'un mur (30.01.2023)
+        {
+            isSliding = false;
+            anim.SetBool("IsSliding", false);
+        }
+
+        if (isSliding && Input.GetKeyDown(KeyCode.Space)) // si le joueur est en train de glisser et qu'il appuie sur la barre éspace alors: (30.01.2023)
+        {
+            wallJumping = true; // la variable devient true (30.01.2023)
+            Invoke("StopWallJump", wallJumpDuration); // va active la fonction "StopWallJump" au bout du temps donné par la variable wallJumpDuration (30.01.2023)
+            CantSwitchDirection = -transform.localScale.x; // permet au joueur de ne pas changer la direction du jumpWall (30.01.2023)
+        }
+
+        if (wallJumping) // si la variable est vrai alors: (30.01.2023)
+        {
+            rb.velocity = new Vector2(CantSwitchDirection * wallJumpForce.x, wallJumpForce.y); // crée la jumpWall grace à un système de vitesse définie par la direction opposé du jour et la vitesse définie par une variable (30.01.2023)
+        }
+    }
+
+    private void KB() // fonction pour la projection lors du contacte avec un enemie (6.02.2023)
+    {
+
+        if (isKB == true) // si le joueur est en projection (6.02.2023)
+        {
+            rb.velocity = knockbackDirection * KBForce; // vitesse du personnage pour la projection définie par la force et le vecteur joueur et enemie (6.02.2023)
+            Invoke("StopKB", KBduration); // temps avant d'annuler la projection (6.02.2023)
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision) // fonction pour detecter les collision (6.02.2023)
+    {
+        if(collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Obstacle")) // detect si la hitbox du joueur touche celle d'un objet ayant le tag "Enemy" (6.02.2023)
+        {
+            knockbackDirection = (transform.position - collision.transform.position).normalized; // direction de la projection définie selon la position du joueur et celle de l'object qu'il a toucher (6.02.2023)
+            isKB = true; 
+            Health -= 1; // retire un point de vie lors du contact avec un ennemie (6.02.2023)
+            if (Health <= 0)
+            {
+                StartCoroutine(Respawn(2));
+            }
+        }
+    }
+
+    void StopKB() // fonction pour arreter la projection (6.02.2023)
+    {
+        isKB = false;
+    }
+
+    void StopWallJump() // fonction pour arreter le saut du mur (30.01.2023)
+    {
+        wallJumping = false; 
+    }
+
+    void OnDrawGizmosSelected() // fonction pour dessiner une forme (6.02.2023)
+    {
+        Gizmos.color = Color.red; // définir une couleur rouge (6.02.2023)
+        Gizmos.DrawWireSphere(wallCheck.position, WallRadiusCheck); // dessiner une sphère rouge transparentes selon les critère de la zone de dection du wallJump (6.02.2023)
+    }
+
+    private void HeartUI() // fonction pour afficher les points de vie maximume et manquant (6.02.2023)
+    {
+        if(Health > numberOfHearts) // si le nombre de point de vie est plus grand que le nombre de coeur (6.02.2023)
+        {
+            Health = numberOfHearts; // le nombre de coeur devient le nombre de point de vie (6.02.2023)
+        }
+
+
+        for (int i = 0; i < hearts.Length; i++) // boucle pour afficher le point de vie (6.02.2023)
+        {
+            if(i < Health) // si le nombre de coeur est en dessous du nombre de point vie (6.02.2023)
+            {
+                hearts[i].sprite = fullHeart; // afficher l'image du coeur plein (6.02.2023)
+            }
+            else
+            {
+                hearts[i].sprite = emptyHeart; // afficer l'image du coeur vide (6.02.2023)
+            }
+
+            if (i < numberOfHearts) // si le nombre de coeur est dessous du nombre maximal (6.02.2023)
+            {
+                hearts[i].enabled = true;
+            }
+            else
+            {
+                hearts[i].enabled = false;
+            }
+        }
+    }
+
+
+    IEnumerator Respawn(float duration) // Systeme pour faire réparaitre le joueur (8.02.2023)
+    {
+        rb.velocity = new Vector3(0, 0, 0); // supprime la vitèsse de l'objet (8.02.2023)
+        rb.simulated = false; // désactive le rigid body pour enlever les interactions sur l'objet (8.02.2023)
+        transform.localScale = new Vector3(0, 0, 0); // enlève les proportions de l'objet pour que l'on ne le voie plus (8.02.2023)
+        yield return new WaitForSeconds(duration); // attent un nombre de seconde selon la variable duration (8.02.2023)
+        transform.position = startPosition; // téléporte l'objet à sa position d'origine (8.02.2023)
+        transform.localScale = new Vector3(1, 1, 1); // reinstalle les proportions de l'objet pour le rendre visible
+        rb.simulated = true; // réactive le rigidbody (8.02.2023)
+        Health = 3; // remet les pv à 3 (8.02.2023)
+    }
+}
