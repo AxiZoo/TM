@@ -1,0 +1,342 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class Player : MonoBehaviour
+{
+    //RigidBody2D
+    private Rigidbody2D rb; // composant physique permettant de gerer les deplacement et la gravite de l'objet(21.01.2023)
+
+    //Move
+    public float speed; // variable pour gerer la vitesse de deplacement (21.01.2023)
+    private float moveInput; // le moveInput et une valeur permettant de savoir dans quel direction l'objet se dirige car elle est comprise entre -1 et 1 (21.01.2023)
+
+
+    //Jump
+    private bool isGrounded; // boucle permettant de savoir si le joueur est au sol (21.01.2023)
+    public Transform CheckPos; // position de la zone pour voir si il est grounded (21.01.2023)
+    public float RadiusCheck; // zone pour savoir si le joueur est au sol (21.01.2023)
+    public LayerMask wahtIsGround; // Detecter quel object sont considerer comme etant du sol (21.01.2023)
+
+    public float JumpForce; // variable pour la vitesse a la quel l'objet va sauter (21.01.2023)
+    private float JumpTimeCounter; // temps pendant le quel il peut continuer de se diriger vers le haut pendant le saut (21.01.2023)
+    public float JumpTime; // temps maximal pendant le quel il peut continuer de se diriger vers le haut pendant le saut (21.01.2023)
+    private bool isJumping; // boucle pour savoir si il saute (21.01.2023) 
+
+    public ParticleSystem dustEffect; // systeme de particle de poussiere (11.02.2023)
+    private float VelocityBeforCollisision; // valeur qui va permettre de connaitre la vitesse avant l'impact avec le sol (11.02.2023)
+
+    //Animator
+    private Animator anim;  // composant d'animation pour gerer les animations de l'objet (23.01.2023)
+
+    //AttackSysteme
+    private float timeAttack; // temps restant pour attaquer (25.01.2023)
+    public float startTimeAttack; // temps total pour attaquer (25.01.2023)
+
+    public Transform attackPos; // position de la zone qui va infliger des degats au enemies (25.01.2023)
+    public LayerMask whatIsEnemies; //  Detecter quel object sont considerer comme etant un Enemie (25.01.2023)
+    public float attackRange; // rayon vertical de la zone qui va infliger des degats au enemies (25.01.2023)
+    public float attackHight; //rayon horizonzal de la zone qui va infliger des degats au enemies (25.01.2023)
+    public int damage; // nombre de pv a retirer aux enemies a chaque coup appeler aussi degat (25.01.2023)
+
+    //wallJump
+    public LayerMask WahtisWall; // Detecter quel object sont considerer comme etant un mur (30.01.2023)
+    public Transform wallCheck; // position de la zone (30.01.2023)
+    bool isWallTouch; // boucle pour savoir si la zone touche un mur (30.01.2023)
+    bool isSliding; // boucle pour savoir si le joueur est en train de glisser sur un mur (30.01.2023)
+    public float wallSlidingSpeed; // variable pour la vitesse a la quelle le joueur glisse sur les murs (30.01.2023)
+    public float wallJumpDuration; // temps pendant lequel le systeme de saut de mur dure (30.01.2023)
+    public Vector2 wallJumpForce; // vecteur de force pour le systeme de saut de mur (30.01.2023)
+    bool wallJumping; // boucle pour savoir si le joueur est train de sauter du mur (30.01.2023)
+    public float WallRadiusCheck; // rayon de la zone qui detecte les murs (30.01.2023)
+    private float CantSwitchDirection; // variable pour que le joueur ne puisse pas changer de direction lors du saut du mur (30.01.2023)
+
+    //KB
+    public float KBForce; // force de la projection (6.02.2023)
+    public float KBduration; // duree de la projection (6.02.2023)
+    private bool isKB = false; // boucle pour savoir is le joueur est en pleine projection (6.02.2023)
+    private Vector2 knockbackDirection; // Vecteur de la direction de la projection (7.02.2023)
+    private float CantFlip; // variable pour que le joueur ne puisse pas changer de direction lors de la porjection (11.02.2023) 
+
+    //HeartSysteme
+    public int Health; // variable pour definir un nombre de point de vie (6.02.2023)
+    public ParticleSystem TakeDamagedEffect; // Systeme de particule (9.02.2023) 
+    public int numberOfHearts; // variable pour definir le nombre d'image de point de vie (6.02.2023)
+
+    public Image[] hearts; // list d'image de coeur a afficher (6.02.2023)
+    public Sprite fullHeart; // Image du coeur plein (6.02.2023)
+    public Sprite emptyHeart; // image du coeur vide (6.02.2023)
+
+    //Respawn
+    Vector2 startPosition; // variable pour connaitre la position d'origine du joueur (8.02.2023)
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>(); // va identifier les composants du script rigidbody pour l'utiliser  (21.01.2023)
+        anim = GetComponent<Animator>(); // va identifier les composants du le script animator pour l'utiliser (23.01.2023)
+
+        startPosition = transform.position; // definie la position d'origine du joueur a la variable startPosition (8.02.2023) 
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+        Move(); // fonction pour se deplacer de droite à gauche (22.01.2023)
+        Jump(); // fonction pour sauter (21.01.2023)
+        Attack(); // fonction pour attaquer (25.01.2023)
+        WallJump(); // fonction pour sauter d'un mur (30.01.2023)
+        KB(); // fonction pour la projection lors du contacte avec un enemie (6.02.2023)
+        HeartUI(); // fonction pour afficher les points de vie (6.02.2023)
+
+        VelocityBeforCollisision = rb.velocity.y; // permet de savoir la vitesse de chut du joueur avant la collision avec le sol pour generer le DustEffect (11.02.2023)
+    }
+
+    private void Move()
+    {
+        moveInput = Input.GetAxisRaw("Horizontal"); // va definir une valeur entre -1 et 1 pour savoir dans quel direction l'objet se déplace (21.01.2023)
+        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y); // cree un vecteur de force sur le rigidbody qui multiplie le moveInput par la variable speed sur l'axe x et garde la vitesse de base sur l'axe y (21.01.2023)
+
+        if (moveInput < 0f) // si il le Player se delplace vers la gauche (22.01.2023)
+        {
+            Vector3 localScale = transform.localScale; // initialise le localeScale (22.01.2023)
+            localScale.x = -1f; // le local scale devient -1 donc l'image de l'objet s'inverse (22.01.2023)
+            transform.localScale = localScale; // definie le localeScale(22.01.2023) 
+        }
+
+        if (moveInput > 0f) // si il le Player se d�lplace vers la droite (22.01.2023)
+        {
+            Vector3 localScale = transform.localScale; // initialise le localeScale (22.01.2023)
+            localScale.x = 1f; // le local scale devient 1 donc l'image de l'objet se reinstalle (22.01.2023)
+            transform.localScale = localScale; // definie le localeScale(22.01.2023) 
+        }
+
+        if (moveInput == 0) // si ll'objet ne se deplace pas (23.01.2023)
+        {
+            anim.SetBool("IsRunning", false); // lance une boucle d'animation de position imobile (23.01.2023)
+        }
+        else // (23.01.2023)
+        {
+            anim.SetBool("IsRunning", true); // lance une boucle d'animation de cours (23.01.2023)
+        }
+    }
+
+    private void Jump() // fonction pour sauter  (21.01.2023)
+    {
+        isGrounded = Physics2D.OverlapCapsule(CheckPos.position, new Vector2(0.58f, 0.2f), CapsuleDirection2D.Horizontal, 0, wahtIsGround); // definition de la zone pour detecter le sol (21.01.2023)
+        if(isGrounded == true && Input.GetKeyDown(KeyCode.Space)) // si la zone detect le sol et que le joueur apuuuie sur la bar espace (21.01.2023) 
+        {
+            isJumping = true;  // (21.01.2023) 
+            JumpTimeCounter = JumpTime; // reset le chronometre a la variable de base (21.01.2023) 
+            rb.velocity = Vector2.up * JumpForce; // defini la velocite de l'objet selon un veteur multiplie par la variable JumpForce (21.01.2023)
+            anim.SetTrigger("StartJump"); // animation de saut (24.01.2023) 
+        }
+
+        if(Input.GetKey(KeyCode.Space) && isJumping == true) // si la touche espace est maintenue enfoncer et que la boucle isJumping est vrai (21.01.2023) 
+        {
+            if (JumpTimeCounter > 0) // si le tempse de saut est au dessu de 0 (21.01.2023) 
+            {
+                rb.velocity = new Vector2(rb.velocity.x, JumpForce); // defini la velocite de l'objet selon un vecteur ou la velocite en x est conserve et la variable JumpForce (21.01.2023)
+                JumpTimeCounter -= Time.deltaTime; // enleve une valeur toute les frames a la variable JumpTimeCounter (21.01.2023) 
+            }
+            else // (21.01.2023) 
+            {
+                isJumping = false; // (21.01.2023) 
+            }
+        }
+
+        if(Input.GetKeyUp(KeyCode.Space)) // si la touche espace est releve (21.01.2023) 
+        {
+            isJumping = false; // (21.01.2023) 
+        }
+
+        if(isGrounded == true) // si la zone trouche le sol  (24.01.2023) 
+        {
+            anim.SetBool("EndJump", true); // active la boucle qui arrete l'animation de saut (24.01.2023) 
+        }
+        else
+        {
+            anim.SetBool("EndJump", false); // continue de lancer l'animation de saut car l'objet n'a pas touché le sol (24.01.2023) 
+        }
+    }
+
+    private void Attack() // fonction pour attaquer les enemies  (25.01.2023)
+    {
+        if(timeAttack <= 0) // si le temps pour attaquer est en dessou de 0 (25.01.2023)
+        {
+            if (Input.GetKey("y")) // lorsque le joueur appuie sur y (25.01.2023)
+            {
+                Collider2D[] enemiesToDamage = Physics2D.OverlapCapsuleAll(attackPos.position, new Vector2(attackRange, attackHight), CapsuleDirection2D.Horizontal, 0, whatIsEnemies); // va detecter les objet avec la Layer choisi donc Enemie (25.01.2023)
+                for (int i = 0; i < enemiesToDamage.Length; i++) // boucle qui va permetre d'infliger des degats au enemie (25.01.2023)
+                {
+                    enemiesToDamage[i].GetComponent<Enemy>().TakeDamage(damage); // identifie le script appeler Enemy pour enclencher sa fonction TakeDamage (25.01.2023)
+                }
+                
+                if(moveInput == 0) // si l'objet est immobile (31.01.2023)
+                {
+                    anim.SetTrigger("Attack"); // animation d'attaque imobile (31.01.2023)
+                }
+
+                if( moveInput != 0 && isGrounded) // si l'objet est en mouvement et au sol (31.01.2023)
+                {
+                    anim.SetTrigger("AttackRun"); // animation d'attaque pendant un deplacement (31.01.2023)
+                }
+
+                if (!isGrounded) // si l'objet n'est pas au sol (31.01.2023)
+                {
+                    anim.SetTrigger("AttackJump"); // animation d'attaque en l'air (31.01.2023)
+                }
+                timeAttack = startTimeAttack; // reinstaller le temps restant au temps definie de base (25.01.2023)
+            }
+
+        }
+        else
+        {
+            timeAttack -= Time.deltaTime; // reduit la variable à chaque frame (25.01.2023)
+        }
+    }
+
+    private void WallJump() // fonction pour pouvoir faire un saut depuis un mur (30.01.2023)
+    {
+        isWallTouch = Physics2D.OverlapCircle(wallCheck.position, WallRadiusCheck, WahtisWall); // defenit une zone qui detect les murs (30.01.2023)
+
+        if (isWallTouch && !isGrounded && moveInput != 0) // si la zone detect un mur et que l'objet n'est pas au sol (30.01.2023)
+        {
+            isSliding = true; // (30.01.2023)
+            rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue)); // donee une vitesse pour descendre lorsque l'objet glisse d'un mur (30.01.2023)
+            anim.SetBool("IsSliding", true); // lance une animation de glissement (30.01.2023)
+        }
+        else 
+        {
+            isSliding = false; // (30.01.2023)
+            anim.SetBool("IsSliding", false); // arret l'animation de glissement (30.01.2023)
+        }
+
+        if (isSliding && Input.GetKeyDown(KeyCode.Space)) // si le joueur est en train de glisser et qu'il appuie sur la barre espace (30.01.2023)
+        {
+            wallJumping = true; 
+            Invoke("StopWallJump", wallJumpDuration); // va active la fonction "StopWallJump" au bout du temps donner par la variable wallJumpDuration (30.01.2023)
+            CantSwitchDirection = -transform.localScale.x; // permet au joueur de ne pas changer de direction lors d'un saut d'un mur (30.01.2023)
+        }
+
+        if (wallJumping == true) // (30.01.2023)
+        {
+            rb.velocity = new Vector2(CantSwitchDirection * wallJumpForce.x, wallJumpForce.y); // donne une vitesse selon plusieurs variables pour pratiquer le saut depuis le mur (30.01.2023)
+        }
+    }
+
+    private void KB() // fonction pour une projection (6.02.2023)
+    {
+
+        if (isKB == true) 
+        {
+            rb.velocity = knockbackDirection * KBForce; // vitesse du personnage pour la projection definie par la force et le vecteur de l'enemie au joueur (6.02.2023)
+            Invoke("StopKB", KBduration); // temps avant d'annuler la projection (6.02.2023)
+            anim.SetBool("TakeDamage", true); // animation de la projection (11.02.2023)
+            transform.localScale = new Vector2(CantFlip, 1); // empeche l'objet de se retourner pendant la projetction (11.02.2023)
+        }
+    }
+
+    void StopKB() // fonction pour arreter la projection (6.02.2023)
+    {
+        isKB = false; // (6.02.2023)
+        anim.SetBool("TakeDamage", false); // arret l'animation de projection (6.02.2023)
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision) // fonction pour detecter les collision de l'objet (6.02.2023)
+    {
+        if(collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Obstacle")) // detect si la hitbox de l'objet touche celle d'un objet ayant le tag "Enemy" (6.02.2023)
+        {
+            knockbackDirection = (transform.position - collision.transform.position).normalized; // direction de la projection definie selon la position du joueur et celle de l'object qu'il a toucher (6.02.2023)
+            CantFlip = transform.localScale.x; // enregistre la direction qu'avait l'objet avant la projection (11.02.2023)
+            isKB = true; // (6.02.2023)
+
+            Health -= 1; // retire un point de vie lors du contact avec un ennemie (6.02.2023)
+            if (Health >= 1) // si le nombre de point de vie est supperieur a 1 (9.02.2023)
+            {
+                takeDamagedEffect(); // effet de particule  (9.02.2023)
+            }
+            if (Health <= 0) // si les points de vie sont inferieur à 0 (8.02.2023)
+            {
+                StartCoroutine(Respawn(2)); // fonction pendant la quel l'objet va disparaitre (8.02.2023)
+            }
+        }
+
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground") && VelocityBeforCollisision < -40) // si l'objet touche le sol avec une vitesse de chute en dessou de -40 (10.02.2023)
+        {
+            DustEffect(); // effet de pousiere (10.02.2023)
+        }
+    }
+
+    private void takeDamagedEffect() // effet de particule (10.02.2023)
+    {
+        TakeDamagedEffect.transform.position = transform.position; // fait apparaitre le systeme de particule a la position de l'objet (10.02.2023)
+        TakeDamagedEffect.Play(); // déclanche l'effet de particule (10.02.2023)
+    }
+
+    void StopWallJump() // fonction pour arreter le saut du mur (30.01.2023)
+    {
+        wallJumping = false;  // (30.01.2023)
+    }
+
+    void OnDrawGizmosSelected() // fonction pour dessiner une forme (6.02.2023)
+    {
+        Gizmos.color = Color.red; // definit une couleur rouge (6.02.2023)
+        Gizmos.DrawWireSphere(wallCheck.position, WallRadiusCheck); // dessiner une sphere rouge transparentes selon les critere de la zone de dection du wallJump (6.02.2023)
+    }
+
+    private void HeartUI() // fonction pour afficher les points de vie maximume et manquant (6.02.2023)
+    {
+        if(Health > numberOfHearts) // si le nombre de point de vie est plus grand que le nombre de coeur (6.02.2023)
+        {
+            Health = numberOfHearts; // le nombre de coeur devient le nombre de point de vie (6.02.2023)
+        }
+
+
+        for (int i = 0; i < hearts.Length; i++) // boucle pour afficher le point de vie (6.02.2023)
+        {
+            if(i < Health) // si le nombre de coeur est en dessous du nombre de point vie (6.02.2023)
+            {
+                hearts[i].sprite = fullHeart; // afficher l'image du coeur plein (6.02.2023)
+            }
+            else
+            {
+                hearts[i].sprite = emptyHeart; // afficer l'image du coeur vide (6.02.2023)
+            }
+
+            if (i < numberOfHearts) // si le nombre de coeur est dessous du nombre maximal (6.02.2023)
+            {
+                hearts[i].enabled = true; // (6.02.2023)
+            }
+            else
+            {
+                hearts[i].enabled = false; // (6.02.2023)
+            }
+        }
+    }
+
+
+    IEnumerator Respawn(float duration) // Systeme pour faire disparaitre et reparaitre le joueur (8.02.2023)
+    {
+        isKB = false; // empeche la projection de s'effectuer (9.02.2023)
+        rb.velocity = new Vector3(0, 0, 0); // supprime la vitesse de l'objet (8.02.2023)
+        rb.simulated = false; // desactive le rigid body pour enlever les interactions physique sur l'objet (8.02.2023)
+        transform.localScale = new Vector3(0, 0, 0); // enleve les proportions de l'objet pour que l'on ne le voie plus (8.02.2023)
+        yield return new WaitForSeconds(duration); // attent un nombre de seconde selon la variable duration (8.02.2023)
+        transform.position = startPosition; // teleporte l'objet a sa position d'origine (8.02.2023)
+        transform.localScale = new Vector3(1, 1, 1); // reinstalle les proportions de l'objet pour le rendre visible (8.02.2023)
+        rb.simulated = true; // reactive le rigidbody (8.02.2023)
+        Health = 3; // remet les pv a 3 (8.02.2023)
+    }
+
+    private void DustEffect() // effet de poussiere (10.02.2023)
+    {
+        dustEffect.transform.position = CheckPos.transform.position; // fait apparaitre le systeme de particule à la position de l'ojet ChechPos (10.02.2023)
+        dustEffect.Play(); // active le systeme de particule (10.02.2023)
+    }
+
+
+
+}
