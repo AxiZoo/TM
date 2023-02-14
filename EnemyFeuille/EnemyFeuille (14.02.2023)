@@ -1,0 +1,58 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class EnemyFeuille : MonoBehaviour
+{
+    // Utilisation de script 
+    public GameObject enemyObject; // va permettre de savoir dans quel object chercher le script Enemy (7.02.2023) 
+    private Enemy enemy; // associe un nom à l'utilisation du script Enemy (7.02.2023)
+    private Patrol patrol; // composant du script Patrol (7.02.2023)
+
+    // Animator
+    private Animator anim; // associé un nom à l'utilisation de l'animator (7.02.2023)
+
+    // Slowing by Hit 
+    public float slowDuration; // variable pour definir le temps de ralentissement (7.02.2023)
+    private float BaseSpeed; // variable pour la vitesse de base (7.02.2023)
+    private bool SlowByHit; // boucle pour savoir si l'objet doit ralentir ou non (7.02.2023)
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        enemy = enemyObject.GetComponent<Enemy>(); // verife le script sur l'objet associé à enemy (7.02.2023)
+        enemy.enemyTakenDamage += HandleEnemyTakenDamage; // va permettre d'activer la fonction gandleEnemyTakenDamage lorsque la fonction enemyTakenDamage se joue (7.02.2023)
+        anim = enemyObject.GetComponent<Animator>(); // permet d'utiliser l'animator pour lancer des animations (7.02.2023)
+        patrol = enemyObject.GetComponent<Patrol>(); // va chercher un script appeler Patrol assigner a l'objet pour l'utiliser (7.02.2023) 
+
+        BaseSpeed = patrol.speed; // donne la vitesse d'origine (7.02.2023)
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        SlowingByHit(); 
+    }
+
+    private void HandleEnemyTakenDamage() // fonction du script Enemy (7.02.2023)
+    {
+        anim.SetTrigger("GetHited"); // animation (7.02.2023)
+        patrol.speed = 0.1f; // met la vitesse de patrouille à 0.1 (7.02.2023)
+        Invoke("IncrementVariable", slowDuration); // rend la vitesse initiale dans le temps donner (7.02.2023)
+    }
+
+    void IncrementVariable() // va permettre de rendre la vitesse initale a l'objet (7.02.2023)
+    {
+        SlowByHit = true; // (7.02.2023)
+    }
+
+    private void SlowingByHit() // fonction pour ralentir l'objet quand il subbit des degtats (7.02.2023)
+    {
+        if (SlowByHit == true) // (7.02.2023)
+        {
+            patrol.speed = BaseSpeed; // remet la vitesse original (7.02.2023)
+            SlowByHit = false; // (7.02.2023)
+        }
+    }
+}
