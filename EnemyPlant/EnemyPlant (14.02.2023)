@@ -1,0 +1,98 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class EnemyPlant : MonoBehaviour
+{
+    // PlayerDetection
+    public float speed; // variable pour la vitesse (14.01.2023)
+    private bool facingRight = false; // variable pour savoir dans quel direction est tourne l'objet (14.01.2023)
+    public Collider2D detectionZone; // zone de collision (14.01.2023)
+
+    public LayerMask wahtIsGround; // (14.01.2023)
+    public float groundDetectorRadius; // (14.01.2023)
+    public Transform grounddetector; // (14.01.2023)
+    private bool isGrounded; // (14.01.2023)
+
+    private Vector2 startPosition; // (14.01.2023)
+
+    // detection du script Player 
+    private Player player; // initialisation de l'utilisation du script Player (14.01.2023)
+
+    // Animator 
+    private Animator anim;  // composant d'animation pour gerer les animations de l'objet 
+
+    void Start()
+    {
+        anim = GetComponent<Animator>(); // va identifier les composants du le script animator pour l'utiliser (14.01.2023)
+        player = GameObject.FindObjectOfType<Player>(); // va identifier l'objet avec le script Player pour l'utiliser (14.01.2023)
+
+        facingRight = false; // ne tourne pas vers la droite (14.01.2023)
+
+
+        startPosition = transform.position; // (14.01.2023)
+
+    }
+
+    void Update()
+    {
+        PlayerDetection(); // fonction pour savoir si le Joueur entre dans la zone de detection et permet de se diriger vers lui (14.01.2023)
+    }
+
+
+    private void PlayerDetection()
+    {
+        isGrounded = Physics2D.OverlapCircle(grounddetector.position, groundDetectorRadius, wahtIsGround); // (14.01.2023)
+
+        if (detectionZone.bounds.Contains(player.transform.position) && player.Health > 0) // si le joueur touche la zone et qu'il a encore ses pv (14.01.2023)
+        {
+            if (isGrounded == true)
+            {
+                Vector2 targetPosition = new Vector2(player.transform.position.x, transform.position.y); // vecteur de force pour se diriger dans la direction du joueur (14.01.2023)
+                transform.position = Vector2.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime); // fait bouger l'objet en fonction du vecteur et de la vitesse (14.01.2023)
+                anim.SetBool("IsRunning", true); // boucle d'animation (14.01.2023)
+            }
+            else
+            {
+                anim.SetBool("IsRunning", false); // boucle d'animation (14.01.2023)
+            }
+
+            if (transform.position.x < player.transform.position.x && !facingRight) // si l'objet se trouve a la gauche du joueur et qu'il regarde a gauche (14.01.2023)
+            {
+                Flip();
+            }
+            else if (transform.position.x > player.transform.position.x && facingRight) // si l'objet se trouve a la droite  du joueur et qu'il regarde a droite (14.01.2023)
+            {
+                Flip();
+            }
+        }
+
+        else
+        {
+            Vector2 targetPosition = startPosition; // (14.01.2023)
+            transform.position = Vector2.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime); // (14.01.2023)
+            if (transform.position.x < startPosition.x && !facingRight) // (14.01.2023)
+            {
+                Flip();
+            }
+            else if (transform.position.x > startPosition.x && facingRight) // (14.01.2023)
+            {
+                Flip();
+            }
+            else if (transform.position.x == startPosition.x && facingRight) // (14.01.2023)
+            {
+                anim.SetBool("IsRunning", false); // (14.01.2023)
+            }
+        }
+    }
+
+    void Flip() // fonction pour faire tourner l'objet (14.01.2023) 
+    {
+        facingRight = !facingRight; // change la variable en false (14.01.2023) 
+        Vector3 scale = transform.localScale; // initialisation du scale (14.01.2023)
+        scale.x *= -1; // permet de tourner l'objet (14.01.2023)
+        transform.localScale = scale; // reinitialise le scale (14.01.2023)
+    }
+
+
+}
